@@ -21,18 +21,20 @@ TS <- ggplot(data=banking, aes(education, fill = deposit))
 TS + geom_bar()
 
 #Analysis of % Deposit by Education - Plot #1
-g1= ggplot(data=banking, aes(as.factor(education), fill=as.factor(deposit)))+
-  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..]), position="dodge" ) +
-  geom_text(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], label=scales::percent(..count../tapply(..count.., ..x.. ,sum)[..x..]) ),
-           stat="count", position=position_dodge(0.9), vjust=-0.5)+
-  ylab('Deposit %') +
-  xlab('Education') +
-  #legend('Deposit type') --- work on this item
-  ggtitle("           Analysis of Desposit count % by Education") +
-  scale_y_continuous(labels = scales::percent)
+library(dplyr)
+rm(banking)
+banking <- read.csv("bank.csv")
+banking$eddep <- paste(banking$education,banking$deposit)
+bankingnew <- select(banking, eddep,education,deposit)
+g1= bankingnew %>%
+  group_by(eddep,education,deposit) %>%
+  summarise(pct = length(eddep)/length(banking)) %>%
+  ggplot(aes(x = education, y= pct, fill = deposit)) +
+  geom_text(aes(label = scales::percent(round(pct/1000,2))),nudge_y = 3.5)+
+  geom_bar(stat="identity", width=.5, position = "dodge")+
+  scale_y_continuous(labels = function(x) paste0(x*0.1, "%"))
 
-#Breakdown of Term Deposits in the data set
-g2= ggplot(data=banking, aes(x = "", fill = factor(deposit))) +
+g2 = ggplot(data=banking, aes(x = "", fill = factor(deposit))) +
   geom_bar(stat= "count", width = 1, color = "white") +
   geom_text(aes(label = scales::percent(..count.. / sum(..count..))), stat = "count", position = position_stack(vjust = .5)) +
   coord_polar("y", start = 0, direction = -1) +
@@ -43,6 +45,7 @@ g2= ggplot(data=banking, aes(x = "", fill = factor(deposit))) +
 library(gridExtra)
 grid.arrange(g2, g1, ncol=2, left = "Analysis of Desposit",
              right = "Analysis of Desposit count % by Education", top="Analysis by Deposit%")
+
 
 #Distribution of Numeric Data
 #install.packages("Hmisc") - Plot #2
@@ -126,10 +129,11 @@ ggplot(data=banking, aes(x = duration, y = balance,
   ggtitle("Balances by Marital Status") +
   geom_point(size=5)
 
-#Analysis of missed opportunities (work in progress)
+#Analysis of missed opportunities
 w <- ggplot(data=banking, aes(x=marital, y=balance, color=marital))
 w + geom_boxplot(size=1.2) + facet_grid(marital~deposit)+
-  scale_y_continuous(labels = paste0(ylab, "K"),breaks = 10^3 * ylab)+
+  #scale_y_continuous(labels = paste0(ylab, "K"), breaks = 10^3 * ylab)+
+  scale_y_continuous(labels = scales::dollar)+
   ggtitle("Analysis of missed opportunities") +
   theme(axis.title.x=element_blank(),
         axis.text.x=element_blank(),
